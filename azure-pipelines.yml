@@ -10,13 +10,24 @@ pool:
   vmImage: ubuntu-latest
 
 steps:
-- task: Maven@3
+# Загрузка allurectl
+- bash: curl -fsSL https://github.com/allure-framework/allurectl/releases/latest/download/allurectl_linux_amd64 -o allurectl && chmod +x allurectl
+  displayName: Download allurectl
+
+# Запуск тестов через allurectl
+- bash: ./allurectl watch -- mvn clean test
+  displayName: Run tests
+  env:
+    ALLURE_ENDPOINT: https://techwriter.qatools.cloud/
+    ALLURE_PROJECT_ID: 67
+    ALLURE_RESULTS: build/allure-results
+    ALLURE_TOKEN: $(ALLURE_TOKEN)
+    MAVEN_OPTS: '-Xmx3072m'
+
+# Публикация результатов тестов в Azure DevOps
+- task: PublishTestResults@2
   inputs:
-    mavenPomFile: 'pom.xml'
-    mavenOptions: '-Xmx3072m'
-    javaHomeOption: 'JDKVersion'
-    jdkVersionOption: '1.11'
-    jdkArchitectureOption: 'x64'
-    publishJUnitResults: true
+    testResultsFormat: 'JUnit'
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    goals: 'package'
+    failTaskOnFailedTests: false
+  condition: succeededOrFailed()
